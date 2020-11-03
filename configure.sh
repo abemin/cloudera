@@ -546,10 +546,11 @@ CMSCRIPTLOCAL
 	sleep 1
 
 	echo "Create the database schema for the cloudera manager.."
-
-	printf '%s\n' '$ecurity.4BD'| 
+	
+	mysqlSCMPassword=$ecurity.4BD
+	printf '%s\n' ''$mysqlSCMPassword''| 
 		sudo script -q -c '/usr/share/cmf/schema/scm_prepare_database.sh mysql scm scm' /dev/null
-	sleep 1
+	sleep 5
 		
 	echo "Start the Cloudera Manager Server.."
 	service cloudera-scm-server start
