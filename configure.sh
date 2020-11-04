@@ -611,7 +611,7 @@ CMSCRIPTLOCAL
 	mysqlSCMPassword=$ecurity.4BD
 	printf '%s\n' ''$mysqlSCMPassword''| 
 		sudo script -q -c '/usr/share/cmf/schema/scm_prepare_database.sh mysql scm scm' /dev/null
-	sleep 5
+	sleep 10
 		
 	echo "Start the Cloudera Manager Server.."
 	service cloudera-scm-server start
