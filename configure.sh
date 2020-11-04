@@ -75,23 +75,56 @@ DNS2="$dns2"" > /etc/sysconfig/network-scripts/ifcfg-$interface
 	fi
 	sleep 1
 	
-	#changing hostname
+	#changing current node hostname
 	echo "This is your curent hostname"
 	hostname
-	read -p "Change hostname? (y/n)?" CONT
+	read -p "Change current node hostname? (y/n)?" CONT
 	if [ "$CONT" = "y" ]; then
-                echo -n "Enter new Hostname [abc.com.my]: "
-                read host
-                hostnamectl set-hostname ""$host"" --static
+                echo -n "Enter new node Hostname [abc.com.my]: "
+                read chost
+                hostnamectl set-hostname ""$chost"" --static
                 echo "This is final hostname status "
-                hostnamectl status
+                hostname
 	else
                 echo "This is final hostname status "
-                hostnamectl status
+                hostname
 	fi
 	sleep 1
 	
+	#setup hostname master and slave
+	echo "Setting up host file.."
 	
+	echo -n "Enter your domain name [cloudera.com]: "
+	read dmain1
+	
+	echo -n "Enter Master node IP address: "
+	read m1ip
+	echo -n "Enter Master node hostname [master-node]: "
+	read m1host
+    echo $m1ip"         "$m1host"."$dmain1"         "$m1host > /etc/hosts
+	  
+	echo -n "Enter Slave 01 IP address: "
+	read s1ip
+	echo -n "Enter Slave 01 hostname [slave-01-node]: "
+	read s1host
+    echo $s1ip"         "$s1host"."$dmain1"         "$s1host >> /etc/hosts
+	echo $s1ip >> /tmp/slaveip-temp.txt
+	  
+	echo -n "Enter Slave 02 IP address: "
+	read s2ip
+	echo -n "Enter Slave 02 hostname [slave-02-node]: "
+	read s2host
+    echo $s2ip"         "$s2host"."$dmain1"         "$s2host >> /etc/hosts
+	echo $s2ip >> /tmp/slaveip-temp.txt
+	
+	echo -n "Enter Slave 03 IP address: "
+	read s3ip
+	echo -n "Enter Slave 03 hostname [slave-03-node]: "
+	read s3host
+    echo $s3ip"         "$s3host"."$dmain1"         "$s3host >> /etc/hosts
+	echo $s3ip >> /tmp/slaveip-temp.txt
+	
+	#disable firewalld
 	echo "Disabling and stopping firewalld.."
 	systemctl disable firewalld
 	systemctl stop firewalld
@@ -110,8 +143,30 @@ DNS2="$dns2"" > /etc/sysconfig/network-scripts/ifcfg-$interface
 	yum -y install net-tools
 	yum -y install wget
 	yum -y install perl
+	yum -y install sshpass
 	sleep 1
 	
+	echo "Setting up passwordless SSH for HADOOP cluster.."
+	rm -rf ~/.ssh/id_rsa*
+	ssh-keygen -t rsa -P "" -f ~/.ssh/id_rsa
+	ls -ltr ~/.ssh
+	ip1=$(sed -n '1p' /tmp/slaveip-temp.txt)
+	ip2=$(sed -n '2p' /tmp/slaveip-temp.txt)
+	ip3=$(sed -n '3p' /tmp/slaveip-temp.txt)
+
+	echo -n "Enter "$ip1"root password: "
+	read ip1pass
+	sshpass -p $ip1pass ssh-copy-id $ip1
+	
+	echo -n "Enter "$ip2"root password: "
+	read ip2pass
+	sshpass -p $ip1pass ssh-copy-id $ip2
+	
+	echo -n "Enter "$ip3"root password: "
+	read ip3pass
+	sshpass -p $ip3pass ssh-copy-id $ip3
+
+
 	echo "Installing rpmforge repo.."
 	#check if already installed
 	rpmforgestat=$(ls /etc/yum.repos.d/ | grep "rpm" | cut -d'.' -f1 | tail -1)
@@ -160,7 +215,8 @@ net.ipv6.conf.enp0s3.disable_ipv6 = 1" >> /etc/sysctl.conf
 	
 	echo "Add user securonix"
 	username=securonix
-	password=P@ssw0rd
+	echo -n "Please create new pssword for securonix user: "
+	read password
 	egrep "^$username" /etc/passwd >/dev/null
 	if [ $? -eq 0 ]; then
 		echo "User $username already exists! continuing.."
