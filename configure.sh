@@ -3,6 +3,7 @@
 interface=$(ls -la /etc/sysconfig/network-scripts/ifcfg-en* | cut -d'/' -f5 | cut -d'-' -f2)
 uuid=$(cat /etc/sysconfig/network-scripts/ifcfg-$interface | grep "UUID" | cut -d'=' -f2)
 staticcon=$(cat /etc/sysconfig/network-scripts/ifcfg-$interface | grep "BOOTPROTO" | cut -d'=' -f2)
+mynodeip=$(cat /etc/sysconfig/network-scripts/ifcfg-$interface | grep "IPADDR" | cut -d'=' -f2)
 
 if [[ $EUID > 0 ]]; 
 then # we can compare directly with this syntax.
@@ -68,8 +69,7 @@ DNS2="$dns2"" > /etc/sysconfig/network-scripts/ifcfg-$interface
 		then
 		echo "Disabling selinux - reboot required.."
 		sed -i 's/enforcing/disabled/g' /etc/selinux/config /etc/selinux/config
-		echo "REBOOT AND RUN THE SCRIPT AGAIN!"
-		exit 1
+		echo "PLEASE REBOOT LATER!"
 	else
 		echo "SELINUX already disabled"
 	fi
@@ -130,42 +130,38 @@ DNS2="$dns2"" > /etc/sysconfig/network-scripts/ifcfg-$interface
 	systemctl stop firewalld
 	sleep 1
 
-	#checking defrag status
-	defragstat=$(cat /sys/kernel/mm/transparent_hugepage/defrag | cut -d' ' -f3 | cut -d'[' -f2 | cut -d']' -f1)
-	if [[ $defragstat == "never" ]];
-	then
-		echo "No action required!"
-	else
-		echo never > /sys/kernel/mm/transparent_hugepage/defrag
-	fi
-	
-	echo "Installing net-tools, wget and perl.."	
+	echo "Installing net-tools, wget, perl and sshpass.."	
 	yum -y install net-tools
 	yum -y install wget
 	yum -y install perl
 	yum -y install sshpass
 	sleep 1
 	
-	echo "Setting up passwordless SSH for HADOOP cluster.."
-	rm -rf ~/.ssh/id_rsa*
-	ssh-keygen -t rsa -P "" -f ~/.ssh/id_rsa
-	ls -ltr ~/.ssh
+	echo "Checking mode status(Master or Slave)"
 	ip1=$(sed -n '1p' /tmp/slaveip-temp.txt)
 	ip2=$(sed -n '2p' /tmp/slaveip-temp.txt)
 	ip3=$(sed -n '3p' /tmp/slaveip-temp.txt)
+	mynodeip1=$(cat /etc/sysconfig/network-scripts/ifcfg-$interface | grep "IPADDR" | cut -d'=' -f2)
+	if [[ "$mynodeip1" == "$ip1" || "$mynodeip1" == "$ip2" || "$mynodeip1" == "$ip3" ]];
+	then
+		echo "Current node is slave. Moving on.."
+	else
+		echo "Setting up passwordless SSH for HADOOP cluster.."
+		rm -rf ~/.ssh/id_rsa*
+		ssh-keygen -t rsa -P "" -f ~/.ssh/id_rsa
 
-	echo -n "Enter "$ip1"root password: "
-	read ip1pass
-	sshpass -p $ip1pass ssh-copy-id $ip1
+		echo -n "Enter "$ip1" root password: "
+		read ip1pass
+		sshpass -p $ip1pass ssh-copy-id $ip1
 	
-	echo -n "Enter "$ip2"root password: "
-	read ip2pass
-	sshpass -p $ip1pass ssh-copy-id $ip2
+		echo -n "Enter "$ip2" root password: "
+		read ip2pass
+		sshpass -p $ip2pass ssh-copy-id $ip2
 	
-	echo -n "Enter "$ip3"root password: "
-	read ip3pass
-	sshpass -p $ip3pass ssh-copy-id $ip3
-
+		echo -n "Enter "$ip3" root password: "
+		read ip3pass
+		sshpass -p $ip3pass ssh-copy-id $ip3
+	fi
 
 	echo "Installing rpmforge repo.."
 	#check if already installed
@@ -215,7 +211,7 @@ net.ipv6.conf.enp0s3.disable_ipv6 = 1" >> /etc/sysctl.conf
 	
 	echo "Add user securonix"
 	username=securonix
-	echo -n "Please create new pssword for securonix user: "
+	echo -n "Please create new password for securonix user: "
 	read password
 	egrep "^$username" /etc/passwd >/dev/null
 	if [ $? -eq 0 ]; then
@@ -378,6 +374,15 @@ root       soft    nproc     unlimited" >> /etc/security/limits.d/20-nproc.conf
 		echo kafka - nproc 32768 >> /etc/security/limits.d/20-nproc.conf
 	else
 		echo "hdfs20nproc already configured!"
+	fi
+
+	#checking defrag status
+	defragstat=$(cat /sys/kernel/mm/transparent_hugepage/defrag | cut -d' ' -f3 | cut -d'[' -f2 | cut -d']' -f1)
+	if [[ $defragstat == "never" ]];
+	then
+		echo "No action required!"
+	else
+		echo never > /sys/kernel/mm/transparent_hugepage/defrag
 	fi
 	
 	#checking hugepage status
