@@ -38,7 +38,7 @@ NETWORKING_IPV6=no
 NAME="$interface"
 UUID="$uuid"
 DEVICE="$interface"
-MTU=9000
+#MTU=9000
 ONBOOT=yes
 IPADDR="$ipaddr"
 NETMASK="$netmask"
@@ -134,7 +134,9 @@ DNS2="$dns2"" > /etc/sysconfig/network-scripts/ifcfg-$interface
 	yum -y install net-tools
 	yum -y install wget
 	yum -y install perl
-	yum -y install sshpass
+	yum -y install openssh*
+	yum -y install sshpass*
+	yum -y install openssl*
 	sleep 1
 	
 	echo "Checking mode status(Master or Slave)"
@@ -250,16 +252,13 @@ net.ipv6.conf.enp0s3.disable_ipv6 = 1" >> /etc/sysctl.conf
 	yum -y install httpd
 	yum -y install telnet
 	yum -y install bind*
-	yum -y install openssh*
 	yum -y install rpmdevtools
 	yum -y install ntp*
 	yum -y install redhat-lsb*
 	yum -y install cyrus*
 	yum -y install mod_ssl*
 	yum -y install portmap*
-	yum -y install openssl*
 	yum -y install mlocate*
-	yum -y install sshpass*
 	yum -y remove snappy
 	yum -y install dos2unix
 	yum -y install gcc
@@ -446,6 +445,18 @@ fi" >> /etc/rc.local
 		fi
 	fi
 	sleep 1
+
+	echo "Installing MYSQL Connector"
+	cd /Securonix/install/SNYPR/MYSQL
+	wget https://cdn.mysql.com//Downloads/Connector-J/mysql-connector-java-5.1.49.tar.gz
+	tar -zxvf mysql-connector-java-5.1.49.tar.gz
+
+	cd /usr/java
+	cp /Securonix/install/SNYPR/MYSQL/mysql-connector-java-5.1.49/mysql-connector-java-5.1.49-bin.jar .
+	ln -s mysql-connector-java-5.1.49-bin.jar mysql-connector-java.jar
+	cp mysql-connector-java-5.1.49-bin.jar /usr/share/java
+	cd /usr/share/java
+	ln -s mysql-connector-java-5.1.49-bin.jar mysql-connector-java.jar
 
 	echo "Configuration for Master node ONLY!"
 	hostname
