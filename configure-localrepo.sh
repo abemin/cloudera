@@ -294,9 +294,9 @@ net.ipv6.conf.enp0s3.disable_ipv6 = 1" >> /etc/sysctl.conf
 	
 	echo "Enable and start ntpd and ntpdate"
 	systemctl enable ntpd
-	systemctl enable ntpdate
 	systemctl start ntpd
-	systemctl start ntpdate
+	ntpdate -q 0.asia.pool.ntp.org
+	systemctl restart ntpd
 	sleep 1
 	
 	echo "Disable centos ntp pool"
@@ -638,7 +638,7 @@ CMSCRIPTLOCAL
 	mysqlSCMPassword=$ecurity.4BD
 	printf '%s\n' ''$mysqlSCMPassword''| 
 		sudo script -q -c '/usr/share/cmf/schema/scm_prepare_database.sh mysql scm scm' /dev/null
-	sleep 10
+	sleep 15
 		
 	echo "Start the Cloudera Manager Server.."
 	service cloudera-scm-server start
